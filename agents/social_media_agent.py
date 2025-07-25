@@ -1,139 +1,134 @@
-import praw
-import re
-import json
-import google.generativeai as genai
-import requests
+# agents/social_media_agent.py
+
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import ToolMessage
 
 
-# 🔐 1. SET UP API KEYS
-REDDIT_CLIENT_ID = "YQqxZkPnVQIrQmETXX5Ptg"
-REDDIT_SECRET = "kR7VeU5tHNzZ-WPOwCYkEpE1zdDK5w"
-REDDIT_USER_AGENT = "sentiment"
+def create_sentiment_analyst(llm, toolkit):
+    def sentiment_analyst_node(state):
+        coin = state["coin"]
+        current_date = state["trade_date"]
 
-GEMINI_API_KEY = "AIzaSyAE9Igl3apFwKIcUTxZJKQfSOsB7-dAwmo"
+        tools = [toolkit.get_reddit_sentiment_posts]
 
+        print(f"[🧪] Running sentiment analysis for: {coin}")
 
-# 🔌 2. CONFIGURE GEMINI
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-pro")
+        system_message = (
+            f"You are a social media sentiment analyst. You have called the 'get_reddit_sentiment_posts' tool to fetch recent Reddit posts related to {coin}. "
+            f"The tool output is provided in the messages. Classify each post as Positive (e.g., optimistic, bullish), Negative (e.g., critical, bearish), or Neutral (e.g., factual, no strong opinion). "
+            f"Provide a markdown table with columns: Post (short excerpt, max 50 characters), Sentiment, Reason. "
+            f"Summarize the overall market mood (e.g., Bullish, Bearish, Neutral). "
+            f"If the tool output is 'No recent posts found for this coin.', return a report stating:\n"
+            f"| Post | Sentiment | Reason |\n|------|-----------|--------|\n| No posts found | Neutral | No recent posts available |\n\n**Summary**: No recent posts found for {coin}. Consider checking other sources like X or news articles.\n"
+            f"Example output:\n"
+            f"| Post | Sentiment | Reason |\n|------|-----------|--------|\n| Bitcoin to the moon! | Positive | Optimistic about price |\n| BTC is crashing | Negative | Bearish sentiment |\n\n**Summary**: Mixed sentiment with cautious outlook.\n"
+            f"Do not call the 'get_reddit_sentiment_posts' tool again; use the provided tool output to generate the report."
+        )
 
+        # Prompt for first LLM call (with tool-calling)
+        tool_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    "You are a helpful AI sentiment analyst.\n"
+                    "You have access to the following tools: {tool_names}.\n"
+                    "Use the 'get_reddit_sentiment_posts' tool to fetch Reddit posts for {coin}.\n"
+                    "Date: {current_date}.",
+                ),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        ).partial(
+            current_date=current_date,
+            tool_names=", ".join([tool.name for tool in tools]),
+            coin=coin,
+        )
 
-# 🔌 3. CONFIGURE REDDIT
-reddit = praw.Reddit(
-    client_id=REDDIT_CLIENT_ID,
-    client_secret=REDDIT_SECRET,
-    user_agent=REDDIT_USER_AGENT,
-)
+        # Prompt for second LLM call (without tool-calling)
+        report_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    system_message,
+                ),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        ).partial(current_date=current_date, coin=coin)
 
+        # Chain for first call (with tools)
+        tool_chain = tool_prompt | llm.bind_tools(tools)
 
-# 📥 FETCH REDDIT POSTS FOR COINS
-def fetch_reddit_posts(coin_symbol, subreddit_list=None, limit=20):
-    if subreddit_list is None:
-        subreddit_list = [
-            "CryptoCurrency",
-            "CryptoMarkets",
-            "Bitcoin",
-            "ethereum",
-            "altcoin",
-        ]
+        # Chain for second call (no tools to prevent re-triggering)
+        report_chain = report_prompt | llm
 
-    results = []
-    for sub in subreddit_list:
-        for post in reddit.subreddit(sub).search(coin_symbol, sort="new", limit=limit):
-            combined = f"{post.title} {post.selftext}"
-            if len(combined.strip()) > 20:
-                results.append(combined)
-    return results
+        # STEP 1: First LLM call triggers tool
+        result = tool_chain.invoke(state["messages"])
+        print("[🧪] First result.tool_calls:", result.tool_calls)
 
+        # STEP 2: If tools were triggered, call them and re-run LLM
+        if result.tool_calls:
+            tool_outputs = []
+            for tool_call in result.tool_calls:
+                tool_name = tool_call["name"]
+                args = tool_call["args"]
+                print(f"[🧪] Calling tool: {tool_name} with args: {args}")
+                tool_func = getattr(toolkit, tool_name)
+                tool_output = tool_func.invoke(args)
+                print(f"[🧪] Tool output: {tool_output}")
+                # Ensure tool_output is not empty
+                if not tool_output or tool_output.strip() == "":
+                    tool_output = "No recent posts found for this coin."
+                # Wrap tool output as ToolMessage
+                tool_outputs.append(
+                    ToolMessage(
+                        content=tool_output,
+                        tool_call_id=tool_call["id"],
+                        name=tool_name,
+                    )
+                )
 
-# 🧼 CLEAN TEXTS
-def clean_texts(texts):
-    cleaned = []
-    for text in texts:
-        text = re.sub(r"http\S+|www\S+|https\S+", "", text)
-        text = re.sub(r"@\w+|#\w+", "", text)
-        text = re.sub(r"\s+", " ", text).strip()
-        cleaned.append(text)
-    return cleaned
+            state["messages"].append(result)  # Append tool_call (AIMessage)
+            state["messages"].append(tool_outputs[0])  # Append ToolMessage
 
+            # Log messages before second invoke
+            print(f"[🧪] Messages before second invoke: {state['messages']}")
 
-# 🧾 BUILD PROMPT FOR GEMINI
-def build_prompt(coin_symbol, posts):
-    text_block = "\n\n".join(posts[:20])
-    return f"""
-You are a sentiment analysis agent focused on cryptocurrency.
+            # STEP 3: Re-run LLM with report prompt (no tools)
+            try:
+                result = report_chain.invoke(state["messages"])
+                print(f"[🧪] Second LLM result: {result}")
+            except Exception as e:
+                print(f"[🧪] Error invoking LLM: {e}")
+                return {
+                    "messages": state["messages"],
+                    "sentiment_report": f"Error: Failed to generate report due to {str(e)}",
+                }
 
-Analyze the following Reddit posts about the coin "{coin_symbol}". 
-Classify each post as Positive, Negative, or Neutral.
-Summarize key reasons behind the sentiment and give an overall conclusion.
+            # Check for unexpected tool calls
+            if result.tool_calls:
+                print(
+                    f"[🧪] Warning: Unexpected tool calls in second LLM call: {result.tool_calls}"
+                )
+                # Fallback: Retry with simplified messages
+                simplified_messages = [
+                    state["messages"][0],  # Original HumanMessage
+                    tool_outputs[0],  # ToolMessage
+                ]
+                try:
+                    result = report_chain.invoke(simplified_messages)
+                    print(f"[🧪] Retry LLM result: {result}")
+                except Exception as e:
+                    print(f"[🧪] Retry failed: {e}")
+                    return {
+                        "messages": state["messages"],
+                        "sentiment_report": f"Error: Failed to generate report on retry due to {str(e)}",
+                    }
 
-Return ONLY the result in this JSON format (no extra explanation or markdown):
-{{
-  "coin": "{coin_symbol}",
-  "positive_count": int,
-  "negative_count": int,
-  "neutral_count": int,
-  "notable_reasons": [str],
-  "overall_sentiment": "Positive | Neutral | Negative",
-  "summary": str
-}}
+        report = result.content or "⚠️ No report generated."
+        print(f"[🧪] Final report: {report}")
 
-Posts:
-{text_block}
-"""
+        return {
+            "messages": [result],
+            "sentiment_report": report,
+        }
 
-
-# 🌐 CALL GEMINI REST API
-def call_gemini_rest(prompt):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
-    response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-    if response.status_code == 200:
-        return response.json()["candidates"][0]["content"]["parts"][0]["text"]
-    else:
-        print("❌ Gemini API error:", response.status_code, response.text)
-        return None
-
-
-# 💾 OPTIONAL: SAVE TO FILE
-def save_to_file(data, path="sentiment_logs/"):
-    date = datetime.datetime.now().strftime("%Y-%m-%d")
-    filename = f"{path}{data['coin']}_{date}.json"
-    with open(filename, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-# 🚀 MAIN AGENT FUNCTION
-def sentiment_analyst_agent(coin_symbol="BTC"):
-    print(f"📊 Running sentiment analysis for: {coin_symbol}")
-
-    posts = fetch_reddit_posts(coin_symbol)
-    if not posts:
-        print("⚠️ No posts found.")
-        return {"error": "No Reddit posts found."}
-
-    cleaned = clean_texts(posts)
-    prompt = build_prompt(coin_symbol, cleaned)
-
-    raw_output = call_gemini_rest(prompt)
-    if not raw_output:
-        return {"error": "Gemini model failed to return output."}
-
-    # 🧹 Remove any accidental markdown (```json)
-    cleaned_output = re.sub(r"```json|```", "", raw_output.strip())
-
-    try:
-        result = json.loads(cleaned_output)
-        print(json.dumps(result, indent=2))
-        return result
-    except Exception as e:
-        print("⚠️ Could not parse Gemini output. Raw:\n", raw_output)
-        return {"raw_output": raw_output}
-
-
-# ✅ RUN FOR ONE OR MULTIPLE COINS
-if __name__ == "__main__":
-    for coin in ["BTC", "ETH", "SOL", "DOGE"]:
-        sentiment_analyst_agent(coin)
+    return sentiment_analyst_node

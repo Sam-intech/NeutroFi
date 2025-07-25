@@ -1,128 +1,94 @@
-import requests
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import ToolMessage
 import json
-from datetime import datetime
 
 
-class FinanceNewsAnalystAgent:
-    def __init__(self, cryptopanic_api_key: str, gemini_api_key: str = None):
-        self.api_key = cryptopanic_api_key
-        self.gemini_api_key = gemini_api_key
-        self.base_url = "https://cryptopanic.com/api/developer/v2/posts/"
+def create_crypto_news_analyst(llm, toolkit):
+    def news_analyst_node(state):
+        coin = state["coin"]
+        current_date = state["trade_date"]
 
-    def fetch_news(self, currencies=None, filter_type="hot", kind="news", public=True):
-        """Fetch news for specific coin(s) or market-wide if currencies is None."""
-        params = {
-            "auth_token": self.api_key,
-            "filter": filter_type,
-            "kind": kind,
-        }
-        if public:
-            params["public"] = "true"
-        if currencies:
-            params["currencies"] = currencies
+        tools = [toolkit.get_crypto_news]
 
-        try:
-            response = requests.get(self.base_url, params=params)
-            if response.status_code != 200:
-                print(f"[❌] API Error {response.status_code}: {response.text}")
-                return []
+        print(f"[🧪] Running news analysis for: {coin}")
 
-            results = response.json().get("results", [])
-            parsed_news = []
-
-            for post in results:
-                title = post.get("title", "").strip()
-                published = post.get("published_at")
-                url = (
-                    post.get("url")
-                    or post.get("original_url")
-                    or "https://cryptopanic.com/"
-                )
-                source = post.get("source", {}).get("title", "Unknown")
-                if not title or not published:
-                    continue
-                parsed_news.append(
-                    {
-                        "Title": title,
-                        "Source": source,
-                        "Published": published,
-                        "URL": url,
-                    }
-                )
-            return parsed_news
-
-        except Exception as e:
-            print(f"[❌] Exception while fetching news: {e}")
-            return []
-
-    def print_news_digest(self, news_data, label="News"):
-        if not news_data:
-            print(f"No {label.lower()} available.")
-            return
-
-        print(f"\n📰 {label} Digest ({len(news_data)} items):\n")
-        for i, item in enumerate(news_data, 1):
-            pub_time = datetime.fromisoformat(
-                item["Published"].replace("Z", "+00:00")
-            ).strftime("%b %d %Y %H:%M UTC")
-            print(f"{i}. {item['Title']} ({item['Source']})")
-            print(f"   Published: {pub_time}")
-            print(f"   🔗 {item['URL']}\n")
-
-    def generate_summary(self, news_data, label="Market"):
-        if not self.gemini_api_key:
-            print(f"[⚠️] Gemini API key not set. Skipping {label} summary.")
-            return
-
-        if not news_data:
-            print(f"[⚠️] No {label.lower()} news to summarize.")
-            return
-
-        headlines = "\n".join(
-            [f"- {item['Title']} ({item['Source']})" for item in news_data]
+        # Properly escaped system message
+        system_message = (
+            f"You are a cryptocurrency news analyst. You have called the 'get_crypto_news' tool to fetch recent news articles about {coin}. "
+            f"The tool output is provided in the messages as a JSON string containing a list of news articles with fields: Title, Source, Published, URL. "
+            f"Analyze the news to determine current market sentiment, risks, and opportunities. "
+            f"Include a markdown table with columns: Date (Published), Headline (max 50 characters), Source, Sentiment (Positive/Negative/Neutral). "
+            f"Provide a professional summary of the major themes and their impact on {coin}'s market perception or price potential. "
+            f"If the tool output indicates an error or no news (e.g., {{{{'error': 'message'}}}} or empty list)..."
+            f"Example output:\n"
+            f"## News Report for {coin}\n"
+            f"[Analysis of news items and their impact]\n"
+            f"| Date | Headline | Source | Sentiment |\n|------|----------|--------|-----------|\n| Jan 01 2025 | {coin} hits $100K | CoinDesk | Positive |\n| Jan 02 2025 | Mining concerns | Bloomberg | Negative |\n\n"
+            f"**Summary**: [Impact of news on {coin}'s market position].\n"
+            f"Do not call the 'get_crypto_news' tool again; use the provided tool output to generate the report."
         )
 
-        prompt = (
-            f"The following are the most important {label.lower()} crypto news headlines:\n\n{headlines}\n\n"
-            f"Summarize the overall market sentiment and highlight any risks or opportunities."
+        # Prompt for first LLM call (tool-calling)
+        tool_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    "You are a crypto analyst AI.\n"
+                    "Immediately call the 'get_crypto_news' tool to fetch recent news for {coin}.\n"
+                    "Do not ask for clarification or additional input; use the provided coin symbol.\n"
+                    "Date: {current_date}.",
+                ),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        ).partial(current_date=current_date, coin=coin)
+
+        # Prompt for second LLM call (report generation)
+        report_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_message),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        ).partial(current_date=current_date, coin=coin)
+
+        # Chains
+        tool_chain = tool_prompt | llm.bind_tools(tools)
+        report_chain = report_prompt | llm
+
+        # STEP 1: Tool execution
+        tool_result = tool_chain.invoke(
+            {"messages": [{"type": "human", "content": f"Analyze news for {coin}."}]}
         )
 
-        headers = {
-            "Content-Type": "application/json",
-            "X-goog-api-key": self.gemini_api_key,
-        }
+        print(f"[🧪] First result.tool_calls: {tool_result.tool_calls}")
 
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
+        # Get tool output
+        if tool_result.tool_calls:
+            tool_call = tool_result.tool_calls[0]
+            tool_output = toolkit.get_crypto_news.invoke(
+                tool_call["args"]
+            )  # Fix deprecated call
+            print(f"[🧪] Tool output: {tool_output}")
 
-        try:
-            res = requests.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-                headers=headers,
-                data=json.dumps(payload),
-            )
-            result = res.json()
-            if "candidates" in result:
-                summary = result["candidates"][0]["content"]["parts"][0]["text"]
-                print(f"\n📈 Gemini {label} Summary:\n" + summary)
+            if "error" in tool_output:
+                tool_msg = ToolMessage(
+                    content=json.dumps(tool_output),
+                    name=tool_call["name"],
+                    tool_call_id=tool_call["id"],
+                )
             else:
-                print(f"[❌] Gemini returned no content for {label}.")
-        except Exception as e:
-            print(f"[❌] Gemini {label} summary failed: {e}")
+                tool_msg = ToolMessage(
+                    content=json.dumps(tool_output),
+                    name=tool_call["name"],
+                    tool_call_id=tool_call["id"],
+                )
+        else:
+            tool_msg = ToolMessage(
+                content=json.dumps({"error": "No tool call made."}),
+                name="get_crypto_news",
+                tool_call_id="fallback-id",
+            )
 
+        # STEP 2: Run the report
+        return report_chain.invoke({"messages": [tool_result, tool_msg]})
 
-# ========== Example Usage ==========
-if __name__ == "__main__":
-    CRYPTOPANIC_API_KEY = "48db7f2185db91ce057c9ecde34b890ffe00a61f"
-    GEMINI_API_KEY = "AIzaSyAE9Igl3apFwKIcUTxZJKQfSOsB7-dAwmo"  # Optional
-
-    agent = FinanceNewsAnalystAgent(CRYPTOPANIC_API_KEY, GEMINI_API_KEY)
-
-    # Specific coin news
-    eth_news = agent.fetch_news(currencies="ETH")
-    agent.print_news_digest(eth_news, label="Ethereum News")
-    agent.generate_summary(eth_news, label="Ethereum")
-
-    # Market-wide news
-    market_news = agent.fetch_news(currencies=None)
-    agent.print_news_digest(market_news, label="Market News")
-    agent.generate_summary(market_news, label="Market")
+    return news_analyst_node

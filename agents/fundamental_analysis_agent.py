@@ -1,124 +1,134 @@
-import requests
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import ToolMessage
 import json
-import os
 
 
-class FundamentalAnalystAgent:
-    def __init__(
-        self, coin_id: str, gemini_api_key: str = None, coingecko_api_key: str = None
-    ):
-        self.coin_id = coin_id
-        self.gemini_api_key = gemini_api_key
-        self.coingecko_api_key = coingecko_api_key
-        self.base_url = "https://api.coingecko.com/api/v3"
+def create_fundamentals_analyst(llm, toolkit):
+    def fundamentals_analyst_node(state):
+        coin = state["coin"]
+        current_date = state["trade_date"]
 
-        self.data = {}
+        tools = [toolkit.get_crypto_fundamentals]
 
-    def fetch_data(self):
-        """Fetch fundamental data using CoinGecko Demo API key."""
-        params = {"localization": "false", "x_cg_demo_api_key": self.coingecko_api_key}
+        print(f"[🧪] Running fundamentals analysis for: {coin}")
 
-        try:
-            coin_url = f"{self.base_url}/coins/{self.coin_id}"
-            tickers_url = f"{self.base_url}/coins/{self.coin_id}/tickers"
-
-            coin_resp = requests.get(coin_url, params=params)
-            tickers_resp = requests.get(
-                tickers_url, params={"x_cg_demo_api_key": self.coingecko_api_key}
-            )
-
-            if coin_resp.status_code != 200:
-                print(
-                    f"[❌] Coin data failed: {coin_resp.status_code} - {coin_resp.text}"
-                )
-                return
-            if tickers_resp.status_code != 200:
-                print(f"[⚠️] Ticker data failed: {tickers_resp.status_code}")
-
-            coin_data = coin_resp.json()
-            tickers_data = tickers_resp.json()
-
-            self.data = {
-                "Name": coin_data.get("name"),
-                "Symbol": coin_data.get("symbol", "").upper(),
-                "Market Cap (USD)": coin_data.get("market_data", {})
-                .get("market_cap", {})
-                .get("usd"),
-                "Circulating Supply": coin_data.get("market_data", {}).get(
-                    "circulating_supply"
-                ),
-                "Total Supply": coin_data.get("market_data", {}).get("total_supply"),
-                "TVL (USD)": coin_data.get("market_data", {}).get("total_value_locked"),
-                "Token Categories": coin_data.get("categories"),
-                "Token Platforms": coin_data.get("platforms"),
-                "Exchange Listings Count": len(tickers_data.get("tickers", [])),
-            }
-
-        except Exception as e:
-            print(f"[❌] Exception fetching data: {e}")
-            self.data = {}
-
-    def print_raw_report(self):
-        if not self.data:
-            print("No data available. Run fetch_data() first.")
-            return
-        print("\n📊 Fundamental Metrics Report (Public Data Only):")
-        for k, v in self.data.items():
-            print(f"{k}: {v}")
-
-    def generate_summary(self):
-        if not self.gemini_api_key:
-            print("[⚠️] Gemini API key not provided. Skipping summary.")
-            return
-
-        if not self.data:
-            print("[⚠️] No data to summarize.")
-            return
-
-        prompt = (
-            f"Here is public fundamental data for a cryptocurrency project:\n\n"
-            f"{json.dumps(self.data, indent=2)}\n\n"
-            f"Generate a concise summary of this coin’s fundamentals in professional tone."
+        # System message for report generation
+        system_message = (
+            f"You are a crypto fundamentals analyst. You have called the 'get_crypto_fundamentals' tool to fetch data about {coin} "
+            f"(e.g., market cap, supply, listings, token platforms). Use the provided tool output to write a detailed report. "
+            f"Include a markdown table summarizing key metrics (e.g., Market Cap, Circulating Supply, Total Supply, Exchange Listings Count). "
+            f"Provide a professional summary of the coin's fundamentals, highlighting its market position and potential. "
+            f"If the tool output indicates an error or no data, state: 'No fundamental data available for {coin}.' "
+            f"Example output:\n"
+            f"## Fundamentals Report for {coin}\n"
+            f"[Analysis of market cap, supply, etc. based on data]\n"
+            f"| Metric | Value |\n|--------|-------|\n| Market Cap (USD) | $1,234,567,890 |\n| Circulating Supply | 18,900,000 |\n| Total Supply | 21,000,000 |\n| Exchange Listings Count | 150 |\n\n"
+            f"**Summary**: [Summary of the coin's fundamentals and market position].\n"
+            f"Do not call the 'get_crypto_fundamentals' tool again; use the provided tool output."
         )
 
-        headers = {
-            "Content-Type": "application/json",
-            "X-goog-api-key": self.gemini_api_key,
+        # Prompt for first LLM call (tool-calling)
+        tool_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    "You are a crypto analyst AI.\n"
+                    "Immediately call the 'get_crypto_fundamentals' tool to fetch data for {coin}.\n"
+                    "Do not ask for clarification or additional input; use the provided coin symbol.\n"
+                    "Date: {current_date}.",
+                ),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        ).partial(current_date=current_date, coin=coin)
+
+        # Prompt for second LLM call (report generation, no tools)
+        report_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    system_message,
+                ),
+                MessagesPlaceholder(variable_name="messages"),
+            ]
+        ).partial(current_date=current_date, coin=coin)
+
+        # Chains
+        tool_chain = tool_prompt | llm.bind_tools(tools)
+        report_chain = report_prompt | llm
+
+        # STEP 1: First LLM call to trigger tool
+        result = tool_chain.invoke(state["messages"])
+        print(f"[🧪] First result.tool_calls: {result.tool_calls}")
+
+        # STEP 2: If tools were triggered, call them and re-run LLM
+        if result.tool_calls:
+            tool_outputs = []
+            for tool_call in result.tool_calls:
+                tool_name = tool_call["name"]
+                args = tool_call["args"]
+                print(f"[🧪] Calling tool: {tool_name} with args: {args}")
+                tool_func = getattr(toolkit, tool_name)
+                tool_output = tool_func.invoke(args)
+                print(f"[🧪] Tool output: {tool_output}")
+                # Ensure tool_output is valid
+                if not tool_output or tool_output.strip() == "":
+                    tool_output = json.dumps({"error": f"No data available for {coin}"})
+                # Wrap tool output as ToolMessage
+                tool_outputs.append(
+                    ToolMessage(
+                        content=tool_output,
+                        tool_call_id=tool_call["id"],
+                        name=tool_name,
+                    )
+                )
+
+            state["messages"].append(result)  # Append tool_call (AIMessage)
+            state["messages"].append(tool_outputs[0])  # Append ToolMessage
+
+            # Log messages before second invoke
+            print(f"[🧪] Messages before second invoke: {state['messages']}")
+
+            # STEP 3: Re-run LLM with report prompt (no tools)
+            try:
+                input_dict = {"messages": state["messages"]}
+                print(f"[🧪] Input to report_chain: {input_dict}")
+                result = report_chain.invoke(input_dict)
+                print(f"[🧪] Second LLM result: {result}")
+            except Exception as e:
+                print(f"[🧪] Error invoking LLM: {e}")
+                return {
+                    "messages": state["messages"],
+                    "fundamentals_report": f"Error: Failed to generate report due to {str(e)}",
+                }
+
+            # Check for unexpected tool calls
+            if result.tool_calls:
+                print(
+                    f"[🧪] Warning: Unexpected tool calls in second LLM call: {result.tool_calls}"
+                )
+                # Fallback: Retry with simplified messages
+                simplified_messages = [
+                    state["messages"][0],  # Original HumanMessage
+                    tool_outputs[0],  # ToolMessage
+                ]
+                try:
+                    input_dict = {"messages": simplified_messages}
+                    print(f"[🧪] Retry input to report_chain: {input_dict}")
+                    result = report_chain.invoke(input_dict)
+                    print(f"[🧪] Retry LLM result: {result}")
+                except Exception as e:
+                    print(f"[🧪] Retry failed: {e}")
+                    return {
+                        "messages": state["messages"],
+                        "fundamentals_report": f"Error: Failed to generate report on retry due to {str(e)}",
+                    }
+
+        report = result.content or f"No fundamental data available for {coin}."
+        print(f"[🧪] Final report: {report}")
+
+        return {
+            "messages": [result],
+            "fundamentals_report": report,
         }
 
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-
-        try:
-            response = requests.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-                headers=headers,
-                data=json.dumps(payload),
-            )
-            result = response.json()
-
-            if "candidates" in result:
-                summary = result["candidates"][0]["content"]["parts"][0]["text"]
-                print("\n📝 Gemini Summary:\n" + summary)
-            else:
-                print("[❌] Gemini API returned no candidates.")
-                print("Response:", json.dumps(result, indent=2))
-
-        except Exception as e:
-            print("[❌] Gemini summary failed:", e)
-            print("Response:", response.text)
-
-
-# 🔍 Example Run
-if __name__ == "__main__":
-    GEMINI_API_KEY = "AIzaSyAE9Igl3apFwKIcUTxZJKQfSOsB7-dAwmo"
-    COINGECKO_API_KEY = "CG-udysTCRtHHSJHV9QbzKh1vcN"
-
-    agent = FundamentalAnalystAgent(
-        coin_id="ethereum",
-        gemini_api_key=GEMINI_API_KEY,
-        coingecko_api_key=COINGECKO_API_KEY,
-    )
-
-    agent.fetch_data()
-    agent.print_raw_report()
-    agent.generate_summary()
+    return fundamentals_analyst_node
