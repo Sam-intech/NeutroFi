@@ -15,7 +15,7 @@ import os
 load_dotenv()
 
 # 🔐 API KEYS (Use .env or config file in production)
-GEMINI_KEY = "AIzaSyBdxvhnfHPxCrKe3S0Ax5sOLRyWibmNmac"
+GEMINI_KEY = "AIzaSyAbtCj88TJSP_vd6s8ZRMEmIq_dkPHbK1Q"
 CRYPTOPANIC_KEY = "48db7f2185db91ce057c9ecde34b890ffe00a61f"
 COINGECKO_KEY = "CG-udysTCRtHHSJHV9QbzKh1vcN"
 REDDIT_CLIENT_ID = "YQqxZkPnVQIrQmETXX5Ptg"
@@ -64,22 +64,6 @@ class AgentState(TypedDict):
     risk_notes: Optional[str]
     final_recommendation: Optional[str]
 
-
-# Initialize state
-coin = "xrp"
-trade_date = "2025-07-25"
-state = {
-    "coin": coin,
-    "trade_date": trade_date,
-    "messages": [],
-    "news_report": None,
-    "fundamentals_report": None,
-    "technical_report": None,
-    "sentiment_report": None,
-    "research_summary": None,
-    "risk_notes": None,
-    "final_decision": None,
-}
 
 # Initialize graph
 workflow = StateGraph(AgentState)
