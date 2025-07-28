@@ -11,7 +11,7 @@ def create_sentiment_analyst(llm, toolkit):
 
         tools = [toolkit.get_reddit_sentiment_posts]
 
-        print(f"[🧪] Running sentiment analysis for: {coin}")
+        # print(f"[🧪] Running sentiment analysis for: {coin}")
 
         system_message = (
             f"You are a social media sentiment analyst. You have called the 'get_reddit_sentiment_posts' tool to fetch recent Reddit posts related to {coin}. "
@@ -62,7 +62,7 @@ def create_sentiment_analyst(llm, toolkit):
 
         # STEP 1: First LLM call triggers tool
         result = tool_chain.invoke(state["messages"])
-        print("[🧪] First result.tool_calls:", result.tool_calls)
+        # print("[🧪] First result.tool_calls:", result.tool_calls)
 
         # STEP 2: If tools were triggered, call them and re-run LLM
         if result.tool_calls:
@@ -70,10 +70,10 @@ def create_sentiment_analyst(llm, toolkit):
             for tool_call in result.tool_calls:
                 tool_name = tool_call["name"]
                 args = tool_call["args"]
-                print(f"[🧪] Calling tool: {tool_name} with args: {args}")
+                # print(f"[🧪] Calling tool: {tool_name} with args: {args}")
                 tool_func = getattr(toolkit, tool_name)
                 tool_output = tool_func.invoke(args)
-                print(f"[🧪] Tool output: {tool_output}")
+                # print(f"[🧪] Tool output: {tool_output}")
                 # Ensure tool_output is not empty
                 if not tool_output or tool_output.strip() == "":
                     tool_output = "No recent posts found for this coin."
@@ -90,14 +90,14 @@ def create_sentiment_analyst(llm, toolkit):
             state["messages"].append(tool_outputs[0])  # Append ToolMessage
 
             # Log messages before second invoke
-            print(f"[🧪] Messages before second invoke: {state['messages']}")
+            # print(f"[🧪] Messages before second invoke: {state['messages']}")
 
             # STEP 3: Re-run LLM with report prompt (no tools)
             try:
                 result = report_chain.invoke(state["messages"])
-                print(f"[🧪] Second LLM result: {result}")
+                # print(f"[🧪] Second LLM result: {result}")
             except Exception as e:
-                print(f"[🧪] Error invoking LLM: {e}")
+                # print(f"[🧪] Error invoking LLM: {e}")
                 return {
                     "messages": state["messages"],
                     "sentiment_report": f"Error: Failed to generate report due to {str(e)}",
@@ -105,9 +105,9 @@ def create_sentiment_analyst(llm, toolkit):
 
             # Check for unexpected tool calls
             if result.tool_calls:
-                print(
-                    f"[🧪] Warning: Unexpected tool calls in second LLM call: {result.tool_calls}"
-                )
+                # print(
+                #     f"[🧪] Warning: Unexpected tool calls in second LLM call: {result.tool_calls}"
+                # )
                 # Fallback: Retry with simplified messages
                 simplified_messages = [
                     state["messages"][0],  # Original HumanMessage
@@ -115,16 +115,16 @@ def create_sentiment_analyst(llm, toolkit):
                 ]
                 try:
                     result = report_chain.invoke(simplified_messages)
-                    print(f"[🧪] Retry LLM result: {result}")
+                    # print(f"[🧪] Retry LLM result: {result}")
                 except Exception as e:
-                    print(f"[🧪] Retry failed: {e}")
+                    # print(f"[🧪] Retry failed: {e}")
                     return {
                         "messages": state["messages"],
                         "sentiment_report": f"Error: Failed to generate report on retry due to {str(e)}",
                     }
 
         report = result.content or "⚠️ No report generated."
-        print(f"[🧪] Final report: {report}")
+        # print(f"[🧪] Final report: {report}")
 
         return {
             "messages": [result],

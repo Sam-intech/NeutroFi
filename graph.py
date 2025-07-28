@@ -5,6 +5,8 @@ from agents.news_agent import create_crypto_news_analyst
 from agents.fundamental_analysis_agent import create_fundamentals_analyst
 from agents.technical_anlyst_agent import create_technical_analyst
 from agents.social_media_agent import create_sentiment_analyst
+from agents.research_analyst_agent import create_research_analyst_agent
+from agents.risk_management_agent import create_risk_manager_agent
 from toolkit.crypto_toolkit import MyCryptoToolKit
 from dotenv import load_dotenv
 import os
@@ -12,13 +14,13 @@ import os
 # Load environment variables
 load_dotenv()
 
-# 🔐 API KEYS
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-CRYPTOPANIC_KEY = os.getenv("CRYPTOPANIC_KEY")
-COINGECKO_KEY = os.getenv("COINGECKO_KEY")
-REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
-REDDIT_SECRET = os.getenv("REDDIT_SECRET")
-REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
+# 🔐 API KEYS (Use .env or config file in production)
+GEMINI_KEY = "AIzaSyBdxvhnfHPxCrKe3S0Ax5sOLRyWibmNmac"
+CRYPTOPANIC_KEY = "48db7f2185db91ce057c9ecde34b890ffe00a61f"
+COINGECKO_KEY = "CG-udysTCRtHHSJHV9QbzKh1vcN"
+REDDIT_CLIENT_ID = "YQqxZkPnVQIrQmETXX5Ptg"
+REDDIT_SECRET = "kR7VeU5tHNzZ-WPOwCYkEpE1zdDK5w"
+REDDIT_USER_AGENT = "sentiment"
 
 # 🔧 LLM
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -56,10 +58,15 @@ class AgentState(TypedDict):
     fundamentals_report: Optional[str]
     technical_report: Optional[str]
     sentiment_report: Optional[str]
+    research_summary: Optional[str]
+    research_decision: Optional[str]
+    research_confidence: Optional[float]
+    risk_notes: Optional[str]
+    final_recommendation: Optional[str]
 
 
 # Initialize state
-coin = "bitcoin"
+coin = "xrp"
 trade_date = "2025-07-25"
 state = {
     "coin": coin,
@@ -69,6 +76,9 @@ state = {
     "fundamentals_report": None,
     "technical_report": None,
     "sentiment_report": None,
+    "research_summary": None,
+    "risk_notes": None,
+    "final_decision": None,
 }
 
 # Initialize graph
@@ -108,28 +118,44 @@ def sentiment_node(state):
     return create_sentiment_analyst(llm, toolkit)(state)
 
 
-# Add nodes
-workflow.add_node("news", news_node)
-workflow.add_node("fundamentals", fundamentals_node)
-workflow.add_node("technical", technical_node)
-workflow.add_node("sentiment", sentiment_node)
+def research_node(state):
+    state["messages"] = [
+        HumanMessage(content=f"Generate research report for {state['coin']}.")
+    ]
+    return create_research_analyst_agent(llm)(state)
 
-# Define edges (sequential execution)
-workflow.add_edge("news", "fundamentals")
-workflow.add_edge("fundamentals", "technical")
-workflow.add_edge("technical", "sentiment")
-workflow.add_edge("sentiment", END)
 
-# Set entry point
-workflow.set_entry_point("news")
+def risk_node(state):
+    state["messages"] = [
+        HumanMessage(content=f"Conduct risk analysis for {state['coin']}.")
+    ]
+    return create_risk_manager_agent(llm)(state)
 
-# Compile and run graph
-graph = workflow.compile()
-result = graph.invoke(state)
 
-# Print results
-print("Final State:")
-print("\n📰 NEWS REPORT:\n", result["news_report"])
-print("\n📊 FUNDAMENTALS REPORT:\n", result["fundamentals_report"])
-print("\n📉 TECHNICAL REPORT:\n", result["technical_report"])
-print("\n💬 SENTIMENT REPORT:\n", result["sentiment_report"])
+# === Build Graph ===
+def trading_graph(llm, toolkit):
+    workflow = StateGraph(AgentState)
+
+    # Add nodes
+    workflow.add_node("news", news_node)
+    workflow.add_node("fundamentals", fundamentals_node)
+    workflow.add_node("technical", technical_node)
+    workflow.add_node("sentiment", sentiment_node)
+    workflow.add_node("research", research_node)
+    workflow.add_node("risk", risk_node)
+
+    # Edges (sequential)
+    workflow.add_edge("news", "fundamentals")
+    workflow.add_edge("fundamentals", "technical")
+    workflow.add_edge("technical", "sentiment")
+    workflow.add_edge("sentiment", "research")
+    workflow.add_edge("research", "risk")
+    workflow.add_edge("risk", END)
+
+    # Set entry point
+    workflow.set_entry_point("news")
+
+    return workflow.compile()
+
+
+graph = trading_graph(llm, toolkit)

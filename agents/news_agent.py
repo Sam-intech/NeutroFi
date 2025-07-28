@@ -10,7 +10,7 @@ def create_crypto_news_analyst(llm, toolkit):
 
         tools = [toolkit.get_crypto_news]
 
-        print(f"[🧪] Running news analysis for: {coin}")
+        # print(f"[🧪] Running news analysis for: {coin}")
 
         # Properly escaped system message
         system_message = (
@@ -59,7 +59,7 @@ def create_crypto_news_analyst(llm, toolkit):
             {"messages": [{"type": "human", "content": f"Analyze news for {coin}."}]}
         )
 
-        print(f"[🧪] First result.tool_calls: {tool_result.tool_calls}")
+        # print(f"[🧪] First result.tool_calls: {tool_result.tool_calls}")
 
         # Get tool output
         if tool_result.tool_calls:
@@ -67,7 +67,7 @@ def create_crypto_news_analyst(llm, toolkit):
             tool_output = toolkit.get_crypto_news.invoke(
                 tool_call["args"]
             )  # Fix deprecated call
-            print(f"[🧪] Tool output: {tool_output}")
+            # print(f"[🧪] Tool output: {tool_output}")
 
             if "error" in tool_output:
                 tool_msg = ToolMessage(
@@ -89,6 +89,10 @@ def create_crypto_news_analyst(llm, toolkit):
             )
 
         # STEP 2: Run the report
-        return report_chain.invoke({"messages": [tool_result, tool_msg]})
+        report = report_chain.invoke({"messages": [tool_result, tool_msg]})
+        return {
+            "messages": [report],
+            "news_report": report.content,
+        }
 
     return news_analyst_node

@@ -38,7 +38,7 @@ state = {
     "coin": "bitcoin",
     "company_of_interest": "bitcoin",  # Some agents use this key
     "trade_date": "2025-07-25",
-    "messages": [HumanMessage(content="Analyze  for this coin.")],
+    "messages": [HumanMessage(content="Analyze  for this bitcoin.")],
 }
 
 # === Run individual agents
@@ -50,12 +50,12 @@ state = {
 # print("\n📊 FUNDAMENTALS REPORT:\n")
 # print(fund_result["fundamentals_report"])
 
-## 2. 📰 NEWS
-print("\n🔍 Running News Analyst...")
-news_agent = create_crypto_news_analyst(llm, toolkit)
-news_result = news_agent(state)
-print("\n📰 NEWS REPORT:\n")
-print(news_result.content)
+# ## 2. 📰 NEWS
+# print("\n🔍 Running News Analyst...")
+# news_agent = create_crypto_news_analyst(llm, toolkit)
+# news_result = news_agent(state)
+# print("\n📰 NEWS REPORT:\n")
+# print(news_result.content)
 
 
 # ## 3. 📉 TECHNICAL
@@ -65,9 +65,9 @@ print(news_result.content)
 # print("\n📉 TECHNICAL REPORT:\n")
 # print(tech_result["technical_report"])
 
-# ## 4. 💬 SENTIMENT
-# print("\n🔍 Running Sentiment Analyst...")
-# sentiment_agent = create_sentiment_analyst(llm, toolkit)
-# sent_result = sentiment_agent(state)
-# print("\n💬 SENTIMENT REPORT:\n")
-# print(sent_result["sentiment_report"])
+## 4. 💬 SENTIMENT
+print("\n🔍 Running Sentiment Analyst...")
+sentiment_agent = create_sentiment_analyst(llm, toolkit)
+sent_result = sentiment_agent(state)
+print("\n💬 SENTIMENT REPORT:\n")
+print(sent_result["sentiment_report"])
