@@ -15,7 +15,7 @@ import os
 load_dotenv()
 
 # 🔐 API KEYS (Use .env or config file in production)
-GEMINI_KEY = "AIzaSyAbtCj88TJSP_vd6s8ZRMEmIq_dkPHbK1Q"
+GEMINI_KEY = "AIzaSyD50Yl53Z26HaFNbt1f-68aemVUBCILk1c"
 CRYPTOPANIC_KEY = "48db7f2185db91ce057c9ecde34b890ffe00a61f"
 COINGECKO_KEY = "CG-udysTCRtHHSJHV9QbzKh1vcN"
 REDDIT_CLIENT_ID = "YQqxZkPnVQIrQmETXX5Ptg"

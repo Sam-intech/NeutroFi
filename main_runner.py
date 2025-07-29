@@ -41,4 +41,4 @@ def run_trading_pipeline(coin: str, trade_date: str = None):
 
 if __name__ == "__main__":
     # Modify this line to run for different coins or dates
-    run_trading_pipeline(coin="bitcoin", trade_date="2025-07-29")
+    run_trading_pipeline(coin="eth", trade_date="2025-07-29")

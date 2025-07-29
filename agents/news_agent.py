@@ -15,15 +15,15 @@ def create_crypto_news_analyst(llm, toolkit):
         # Properly escaped system message
         system_message = (
             f"You are a cryptocurrency news analyst. You have called the 'get_crypto_news' tool to fetch recent news articles about {coin}. "
-            f"The tool output is provided in the messages as a JSON string containing a list of news articles with fields: Title, Source, Published, URL. "
+            f"The tool output is provided in the messages as a JSON string containing a list of news articles with fields: Title, Published, URL. "
             f"Analyze the news to determine current market sentiment, risks, and opportunities. "
-            f"Include a markdown table with columns: Date (Published), Headline (max 50 characters), Source, Sentiment (Positive/Negative/Neutral). "
+            f"Include a markdown table with columns: Date (Published), Headline (max 50 characters), Sentiment (Positive/Negative/Neutral). "
             f"Provide a professional summary of the major themes and their impact on {coin}'s market perception or price potential. "
             f"If the tool output indicates an error or no news (e.g., {{{{'error': 'message'}}}} or empty list)..."
             f"Example output:\n"
             f"## News Report for {coin}\n"
             f"[Analysis of news items and their impact]\n"
-            f"| Date | Headline | Source | Sentiment |\n|------|----------|--------|-----------|\n| Jan 01 2025 | {coin} hits $100K | CoinDesk | Positive |\n| Jan 02 2025 | Mining concerns | Bloomberg | Negative |\n\n"
+            f"| Date | Headline  | Sentiment |\n|------|----------|--------|-----------|\n| Jan 01 2025 | {coin} hits $100K  | Positive |\n| Jan 02 2025 | Mining concerns  | Negative |\n\n"
             f"**Summary**: [Impact of news on {coin}'s market position].\n"
             f"Do not call the 'get_crypto_news' tool again; use the provided tool output to generate the report."
         )
