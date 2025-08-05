@@ -89,8 +89,8 @@ if submit:
         show_news = st.toggle("📰 Show News Report")
         if show_news:
             news = final_state.get("news_report", "No news available.")
-            st.markdown("### 📰 News Report")
-            st.write(news)
+            st.markdown(f"### 📰 News Report: {news}")
+            # st.write(news)
 
     else:
         st.error("Something went wrong. Could not retrieve analysis.")
