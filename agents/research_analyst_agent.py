@@ -7,6 +7,8 @@ def create_research_analyst_agent(llm):
     def research_analyst_node(state):
         coin = state["coin"]
         current_date = state["trade_date"]
+        user_type = state.get("user_type", "holder")  # 'holder' or 'buyer'
+        horizon = state.get("horizon", "long")  # 'short', 'medium', 'long'
 
         fundamentals = state.get(
             "fundamentals_report", "No fundamentals report available."
@@ -41,7 +43,7 @@ You MUST return:
 5. If already holding the coin, give advice using: Buy (Add), Hold, or Sell, AND include a short reason
 6. If not holding the coin, give advice using: Buy, Hold, or Avoid, AND include a short reason
 
-Your output must follow this format:
+Format exactly like:
 
 ---
 Market Summary:
@@ -56,8 +58,6 @@ Long-Term Recommendation: <Buy/Hold/Sell>, Confidence: <score>
 Existing Holder Advice: <Buy/Hold/Sell/Add> — Reason: <one-sentence reason>
 New Investor Advice: <Buy/Hold/Avoid> — Reason: <one-sentence reason>
 ---
-
-Be clear, structured, and concise.
         """
 
         prompt = ChatPromptTemplate.from_messages(
@@ -99,7 +99,7 @@ Be clear, structured, and concise.
                 reason = match.group(2).strip() if match else "Not specified."
                 return decision, reason
 
-            # Extract time-based decisions
+            # Extract recommendations for all horizons
             short_term = extract_recommendation("Short-Term")
             medium_term = extract_recommendation("Medium-Term")
             long_term = extract_recommendation("Long-Term")
@@ -108,7 +108,7 @@ Be clear, structured, and concise.
             conf_medium = extract_confidence("Medium-Term")
             conf_long = extract_confidence("Long-Term")
 
-            # Extract advice with reasons
+            # Extract targeted trader advice
             existing_holder_action, existing_holder_reason = extract_advice_with_reason(
                 "Existing Holder", ["Buy", "Hold", "Sell", "Add"]
             )
@@ -116,25 +116,33 @@ Be clear, structured, and concise.
                 "New Investor", ["Buy", "Hold", "Avoid"]
             )
 
-            # Set overall decision to long-term recommendation
-            overall_decision = long_term
-            overall_confidence = conf_long
+            # Choose horizon recommendation based on user input
+            horizon_map = {
+                "short": (short_term, conf_short),
+                "medium": (medium_term, conf_medium),
+                "long": (long_term, conf_long),
+            }
+            chosen_decision, chosen_confidence = horizon_map.get(
+                horizon, (long_term, conf_long)
+            )
+
+            # Choose trader advice based on user input
+            if user_type == "holder":
+                trader_action, trader_reason = (
+                    existing_holder_action,
+                    existing_holder_reason,
+                )
+            else:
+                trader_action, trader_reason = new_investor_action, new_investor_reason
 
             return {
                 "messages": [AIMessage(content=content)],
                 "research_summary": content,
-                "research_decision": overall_decision,
-                "research_confidence": overall_confidence,
-                "short_term_decision": short_term,
-                "short_term_confidence": conf_short,
-                "medium_term_decision": medium_term,
-                "medium_term_confidence": conf_medium,
-                "long_term_decision": long_term,
-                "long_term_confidence": conf_long,
-                "existing_holder_advice": existing_holder_action,
-                "existing_holder_reason": existing_holder_reason,
-                "new_investor_advice": new_investor_action,
-                "new_investor_reason": new_investor_reason,
+                "research_decision": chosen_decision,
+                "research_confidence": chosen_confidence,
+                "trader_type": user_type,
+                "trader_advice": trader_action,
+                "trader_reason": trader_reason,
             }
 
         except Exception as e:
@@ -143,16 +151,9 @@ Be clear, structured, and concise.
                 "research_summary": f"Error: {str(e)}",
                 "research_decision": "Hold",
                 "research_confidence": 0.5,
-                "short_term_decision": "Hold",
-                "short_term_confidence": 0.5,
-                "medium_term_decision": "Hold",
-                "medium_term_confidence": 0.5,
-                "long_term_decision": "Hold",
-                "long_term_confidence": 0.5,
-                "existing_holder_advice": "Hold",
-                "existing_holder_reason": "Error extracting reason.",
-                "new_investor_advice": "Hold",
-                "new_investor_reason": "Error extracting reason.",
+                "trader_type": state.get("user_type", "holder"),
+                "trader_advice": "Hold",
+                "trader_reason": "Error extracting reason.",
             }
 
     return research_analyst_node

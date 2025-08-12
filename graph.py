@@ -15,7 +15,7 @@ import os
 load_dotenv()
 
 # 🔐 API KEYS (Use .env or config file in production)
-GEMINI_KEY = "AIzaSyD50Yl53Z26HaFNbt1f-68aemVUBCILk1c"
+GEMINI_KEY = "AIzaSyCxMKvLHmjSPJ-qkNE7VZe4ZhRTPqFNsAk"
 CRYPTOPANIC_KEY = "48db7f2185db91ce057c9ecde34b890ffe00a61f"
 COINGECKO_KEY = "CG-udysTCRtHHSJHV9QbzKh1vcN"
 REDDIT_CLIENT_ID = "YQqxZkPnVQIrQmETXX5Ptg"
@@ -53,6 +53,8 @@ except Exception as e:
 class AgentState(TypedDict):
     coin: str
     trade_date: str
+    user_type: str  # "new_buyer" or "existing_buyer"
+    horizon: str  # "short_term", "mid_term", "long_term"
     messages: List[BaseMessage]
     news_report: Optional[str]
     fundamentals_report: Optional[str]
@@ -62,6 +64,9 @@ class AgentState(TypedDict):
     research_decision: Optional[str]
     research_confidence: Optional[float]
     risk_notes: Optional[str]
+    horizon: Optional[dict]  # Time horizon forecasts,
+    final_reason: Optional[str]  # Reason for final decision,
+    confidence: Optional[float]  # Confidence score for final decision
     final_recommendation: Optional[str]
 
 

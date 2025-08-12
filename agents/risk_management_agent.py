@@ -9,6 +9,9 @@ def create_risk_manager_agent(llm):
         coin = state["coin"]
         current_date = state["trade_date"]
 
+        user_type = state.get("user_type", "holder")  # 'holder' or 'buyer'
+        horizon = state.get("horizon", "long")  # 'short', 'medium', 'long'
+
         decision = state.get("research_decision", "Hold").capitalize()
         confidence = state.get("research_confidence", 0.5)
         research_summary = state.get(
@@ -25,7 +28,6 @@ def create_risk_manager_agent(llm):
             },
         )
 
-        # Normalize helper
         def norm(val):
             return val.capitalize() if isinstance(val, str) else val
 
@@ -48,12 +50,9 @@ def create_risk_manager_agent(llm):
 
         # --- Risk Adjustment Rules ---
         risk_notes = []
-        holder_action = decision
-        buyer_action = decision
-        holder_reason = ""
-        buyer_reason = ""
 
-        # -- Holder rules --
+        holder_action = decision
+        holder_reason = ""
         if confidence < 0.55:
             holder_action = "Hold"
             holder_reason = "Confidence too low for action — defaulting to Hold."
@@ -78,7 +77,10 @@ def create_risk_manager_agent(llm):
             holder_action = "Hold"
             holder_reason = "No major risk signals — maintaining Hold."
 
-        # -- Buyer rules --
+        buyer_action = "Hold"
+        buyer_reason = (
+            "New entry not advised unless confidence and long-term view are strong."
+        )
         if decision == "Buy" and confidence > 0.8 and long_term_conf > 0.75:
             buyer_action = "Buy"
             buyer_reason = (
@@ -86,15 +88,29 @@ def create_risk_manager_agent(llm):
             )
             risk_notes.append("Strong long-term outlook — Buy allowed for new buyers.")
         else:
-            buyer_action = "Hold"
-            buyer_reason = (
-                "New entry not advised unless confidence and long-term view are strong."
-            )
             risk_notes.append(
                 "New buyers advised to Hold unless long-term confidence is strong."
             )
 
-        # --- Prompt for explanation generation ---
+        # --- Choose final recommendation based on user_type ---
+        if user_type == "holder":
+            final_action = holder_action
+            final_reason = holder_reason
+        else:
+            final_action = buyer_action
+            final_reason = buyer_reason
+
+        # --- Filter horizon-specific recommendation ---
+        horizon_map = {
+            "short": (short_term_rec, short_term_conf),
+            "medium": (medium_term_rec, medium_term_conf),
+            "long": (long_term_rec, long_term_conf),
+        }
+        horizon_rec, horizon_conf = horizon_map.get(
+            horizon, (long_term_rec, long_term_conf)
+        )
+
+        # --- Prompt for explanation ---
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
@@ -104,46 +120,35 @@ def create_risk_manager_agent(llm):
                 (
                     "user",
                     """
-Evaluate the research summary and time horizon outlooks. Recommend actions for:
-1. An existing holder of {coin}
-2. A potential new buyer
+Based on the research summary, give a FINAL risk-adjusted recommendation 
+only for the specified trader type and investment horizon.
 
-Include:
-- Rationale for each decision
-- Confidence considerations
-- Time horizon forecasts (short, medium, long)
-- Risk notes summary
+Trader Type: {user_type}
+Investment Horizon: {horizon}
+Recommendation: {final_action}
+Reason: {final_reason}
 
-Coin: {coin}
-Original Decision: {decision}
-Overall Confidence: {confidence}
-
-Horizon Forecasts:
-Short-Term: {short_term_rec} ({short_term_conf})
-Medium-Term: {medium_term_rec} ({medium_term_conf})
-Long-Term: {long_term_rec} ({long_term_conf})
-
-Research Summary:
-{summary}
+Horizon Forecast:
+{horizon} term: {horizon_rec} ({horizon_conf})
 
 Risk Notes:
 {risk_notes}
+
+Research Summary:
+{summary}
                     """,
                 ),
                 MessagesPlaceholder(variable_name="messages"),
             ]
         ).partial(
-            coin=coin,
-            decision=decision,
-            confidence=confidence,
-            short_term_rec=short_term_rec,
-            short_term_conf=short_term_conf,
-            medium_term_rec=medium_term_rec,
-            medium_term_conf=medium_term_conf,
-            long_term_rec=long_term_rec,
-            long_term_conf=long_term_conf,
-            summary=research_summary,
+            user_type=user_type,
+            horizon=horizon,
+            final_action=final_action,
+            final_reason=final_reason,
+            horizon_rec=horizon_rec,
+            horizon_conf=horizon_conf,
             risk_notes="\n".join(risk_notes),
+            summary=research_summary,
         )
 
         chain = prompt | llm
@@ -152,22 +157,18 @@ Risk Notes:
             result = chain.invoke({"messages": state.get("messages", [])})
             return {
                 "messages": [AIMessage(content=result.content)],
-                "holder_recommendation": holder_action,
-                "holder_reason": holder_reason,
-                "buyer_recommendation": buyer_action,
-                "buyer_reason": buyer_reason,
+                "final_recommendation": final_action,
+                "final_reason": final_reason,
+                "confidence": horizon_conf,
                 "risk_notes": "\n".join(risk_notes),
-                "final_recommendation": f"Holder: {holder_action}, Buyer: {buyer_action}",
             }
         except Exception as e:
             return {
                 "messages": state.get("messages", []),
-                "holder_recommendation": "Hold",
-                "holder_reason": "Error during decision evaluation.",
-                "buyer_recommendation": "Hold",
-                "buyer_reason": "Error during decision evaluation.",
+                "final_recommendation": "Hold",
+                "final_reason": f"Error during decision evaluation: {e}",
+                "confidence": 0.5,
                 "risk_notes": f"Error during risk check: {e}",
-                "final_recommendation": "Holder: Hold, Buyer: Hold",
             }
 
     return risk_manager_node
