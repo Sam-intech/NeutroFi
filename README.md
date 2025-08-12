@@ -7,3 +7,5 @@ NeutroFi: Your AI-Powered DeFi Co-Pilot Built with intelligence by the Neural No
 Fundamental agent
 News agent
 Social Media agent
+
+App link : https://neutrofi.streamlit.app/
