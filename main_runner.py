@@ -1,7 +1,6 @@
-# main.py
-
 from graph import graph  # make sure this imports your compiled LangGraph
 from datetime import datetime
+import re
 
 
 def run_trading_pipeline(coin: str, trade_date: str = None):
@@ -27,6 +26,31 @@ def run_trading_pipeline(coin: str, trade_date: str = None):
     print(f"\n🚀 Starting pipeline for: {coin} on {trade_date}\n")
     final_state = graph.invoke(state)
 
+
+    # === Build structured output ===
+    structured_output = {
+        "coin": coin,
+        "trade_date": trade_date,
+        "final_decision": final_state.get("final_recommendation", ""),
+        "research_summary": final_state.get("research_summary", ""),
+        "risk_notes": final_state.get("risk_notes", ""),
+        "reports": {
+            "news": {
+                "raw": final_state.get("news_report", "")
+            },
+            "fundamentals": {
+                "raw": final_state.get("fundamentals_report", "")
+            },
+            "technical": {
+                "raw": final_state.get("technical_report", "")
+            },
+            "sentiment": {
+                "raw": final_state.get("sentiment_report", "")
+            }
+        }
+    }
+
+    # === Keep old prints for CLI debugging ===
     print("\n✅ Final Decision Output\n")
     print("📰 News Report:\n", final_state.get("news_report", "N/A"))
     print("\n📊 Fundamentals Report:\n", final_state.get("fundamentals_report", "N/A"))
@@ -35,10 +59,9 @@ def run_trading_pipeline(coin: str, trade_date: str = None):
     print("\n🔬 Research Summary:\n", final_state.get("research_summary", "N/A"))
     print("\n⚠️ Risk Notes:\n", final_state.get("risk_notes", "N/A"))
     print("\n📈 Final Decision:\n", final_state.get("final_recommendation", "N/A"))
-
     print("\n✅ Pipeline complete.")
 
-    return final_state
+    return structured_output
 
 
 if __name__ == "__main__":
