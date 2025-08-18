@@ -10,6 +10,13 @@
   animation: fadeOutUp 0.6s ease-in forwards;
 }
 
+
+/* side bar  */
+.st-emotion-cache-1fa7f7o {
+  text-transform: capitalize !important;
+}
+
+
 /* Fade in + slide up */
 @keyframes fadeInUp {
   from {
@@ -145,11 +152,13 @@
   flex: 1 1 calc(50% - 16px);
   max-width: calc(50% - 16px);
   background: var(--secondary-background-color, rgba(17,24,39,.06));
-  border: 1px solid color-mix(in srgb, var(--text-color, #eee) 12%, transparent);
-  border-radius: 14px;
-  padding: 18px 20px;
+  /* border: 1px solid color-mix(in srgb, var(--text-color, #eee) 12%, transparent); */
+  /* border-radius: 14px; */
+  /* padding: 18px 20px; */
+  justify-content: center;
+  align-items: center;
   box-sizing: border-box;
-  text-align: center;
+  /* text-align: center; */
   background: #F2F2F2;
   /* background: var(--nf-card); */
   border:1px solid #E6E6E6;
@@ -163,15 +172,22 @@
 /* content polish */
 /* .decision-card h4, */
 .decision-card h5{
-  font-size: 1.3rem;
-  margin: 0 0 6px 0;
+  font-size: 1rem;
+  /* margin: 0 0 6px 0; */
+  font-weight: 300;
+  color: #9ca3af;
 }
 
-/* .result-text{
+.result-text{
   margin: 0;
   font-weight: 700;
-  line-height: 1.35;
-} */
+  line-height: 1;
+  font-size: 1.3rem !important;
+}
+
+.reason-txt {
+  font-size: 1rem !important;
+}
 
 /* color helper (optional) */
 /* .text-color{
@@ -185,3 +201,140 @@
     max-width: 100%;
   }
 }
+
+
+
+.st-emotion-cache-1nckjrl h2 {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+}
+
+
+
+
+
+
+/* Semantic palette */
+:root{
+  --ok:   #10b981;  /* green */
+  --warn: #f59e0b;  /* amber */
+  --bad:  #ef4444;  /* red */
+  --nf-card: var(--secondary-background-color, #f3f4f6);
+  --nf-text: var(--text-color, #111827);
+}
+
+/* Base card styling already exists; we just colorize via modifiers */
+.decision-card .result-text{
+  font-weight: 800;
+}
+
+/* Final Recommendation colors */
+/* .decision-card.status-buy { 
+  border-color: color-mix(in srgb, var(--ok) 35%, 
+  transparent); 
+}
+.decision-card.status-buy .result-text {
+  color: var(--ok); 
+}
+
+.decision-card.status-hold {
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent); 
+}
+.decision-card.status-hold .result-text {
+  color: var(--warn); 
+}
+
+.decision-card.status-sell { 
+  border-color: color-mix(in srgb, var(--bad) 35%, transparent); 
+}
+.decision-card.status-sell .result-text {
+  color: var(--bad); 
+}
+
+/* Optional neutral fallback */
+/* .decision-card.status-neutral {
+  border-color: color-mix(in srgb, var(--nf-text) 12%, transparent); 
+}
+
+/* Confidence bands */
+/* .decision-card.conf-low  { 
+  border-color: color-mix(in srgb, var(--bad) 30%, transparent); 
+}
+.decision-card.conf-low  .result-text { 
+  color: var(--bad); 
+}
+
+.decision-card.conf-mid  { 
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent); 
+}
+.decision-card.conf-mid  .result-text { 
+  color: var(--warn); 
+}
+
+.decision-card.conf-high { 
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent); 
+}
+.decision-card.conf-high .result-text { 
+  color: var(--ok); 
+} */
+
+.decision-card.status-buy {
+  background: #d1fae5;   /* soft green */
+  border: 2px solid #10b981;
+}
+.decision-card.status-buy .result-text {
+  color: #065f46;  /* dark green text */
+}
+
+.decision-card.status-hold {
+  background: #fef3c7;   /* soft yellow */
+  border: 2px solid #f59e0b;
+}
+.decision-card.status-hold .result-text {
+  color: #92400e;  /* dark yellow-brown text */
+}
+
+.decision-card.status-sell {
+  background: #fee2e2;   /* soft red */
+  border: 2px solid #ef4444;
+}
+.decision-card.status-sell .result-text {
+  color: #991b1b;  /* dark red text */
+}
+
+/* === Confidence bands background colors === */
+.decision-card.conf-low {
+  background: #fee2e2;   /* light red */
+  border: 2px solid #ef4444;
+}
+.decision-card.conf-low .result-text {
+  color: #991b1b;
+}
+
+.decision-card.conf-mid {
+  background: #fef3c7;   /* light yellow */
+  border: 2px solid #f59e0b;
+}
+.decision-card.conf-mid .result-text {
+  color: #92400e;
+}
+
+.decision-card.conf-high {
+  background: #d1fae5;   /* light green */
+  border: 2px solid #10b981;
+}
+.decision-card.conf-high .result-text {
+  color: #065f46;
+}
+
+/* Unknown confidence */
+.decision-card.conf-unknown { opacity: .9; }
+
+/* Optional soft tint backgrounds (comment in if you want stronger feedback)
+.decision-card.status-buy    { background: color-mix(in srgb, var(--ok) 10%, var(--nf-card)); }
+.decision-card.status-hold   { background: color-mix(in srgb, var(--warn) 8%, var(--nf-card)); }
+.decision-card.status-sell   { background: color-mix(in srgb, var(--bad) 8%, var(--nf-card)); }
+.decision-card.conf-low      { background: color-mix(in srgb, var(--bad) 6%, var(--nf-card)); }
+.decision-card.conf-mid      { background: color-mix(in srgb, var(--warn) 6%, var(--nf-card)); }
+.decision-card.conf-high     { background: color-mix(in srgb, var(--ok) 6%, var(--nf-card)); }
+*/

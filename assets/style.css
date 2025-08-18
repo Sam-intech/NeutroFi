@@ -33,6 +33,25 @@
 
 
 /* === app styling === */
+/* side bar navigation */
+/* .st-emotion-cache-1csi29a {
+
+}
+
+.st-emotion-cache-1fa7f7o {
+  background-color: #1A5396;
+} */
+
+.st-emotion-cache-1d398ex {
+  text-transform: capitalize !important;
+  /* color: #fff; */
+}
+
+.st-emotion-cache-13eh0c8 {
+  text-transform: capitalize !important;
+}
+
+
 /* Navigation */
 .nav {
   display: flex;
@@ -104,14 +123,14 @@
   background-color: #1A5396;
   color: white;
   border-color: #1A5396;
-  width: 50%;
+  width: 30%;
 }
 
 .st-emotion-cache-1krtkoa:hover {
   background-color: white;
   color: #1A5396;
   border-color: #1A5396;
-  width: 50%;
+  /* width: 50%; */
 }
 
 
@@ -119,14 +138,14 @@
   background-color: #1A5396;
   color: white;
   border-color: #1A5396;
-  width: 50%;
+  width: 30%;
 }
 
 .st-emotion-cache-t0b1k4:hover {
   background-color: white;
   color: #1A5396;
   border-color: #1A5396;
-  width: 50%;
+  /* width: 50%; */
 }
 
 /* KPI Section */

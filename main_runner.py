@@ -54,7 +54,7 @@ def run_trading_pipeline(
             "fundamentals": {"raw": final_state.get("fundamentals_report", "")},
             "technical": {"raw": final_state.get("technical_report", "")},
             "sentiment": {"raw": final_state.get("sentiment_report", "")},
-            "overall": final_state.get("research_summary", ""),
+            "overall": {"raw": final_state.get("research_summary", "")},
         },
     }
 
