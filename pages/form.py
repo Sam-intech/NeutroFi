@@ -2,7 +2,9 @@ import streamlit as st
 from pathlib import Path
 from base64 import b64encode
 import time
+from html import escape
 from main_runner import run_trading_pipeline
+
 
 # === Helper: embed local image if exists ===
 def embed_image(path: Path) -> str:
@@ -25,6 +27,7 @@ with open("assets/form.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 with open("assets/style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 
 # === Session State ===
 if "show_results" not in st.session_state:
@@ -60,8 +63,18 @@ def run_analysis(coin, trader, duration):
         st.rerun()
 
 # === PAGE TITLE ===
-st.markdown("<h1 style='text-align:center;'>Your Investment Preferences</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#a3b1c6;'>Tell NeuroFi about your goals and risk appetite so our agents can analyze the market for you.</p>", unsafe_allow_html=True)
+# st.markdown("<h1 class='title'>Your Investment Preferences</h1>", unsafe_allow_html=True)
+# st.markdown("<p class='subtitle'>Tell NeutroFi about your goals and risk appetite so our agents can analyze the market for you.</p>", unsafe_allow_html=True)
+
+st.markdown(
+    """
+    <div class="hero">
+      <h1 class="title">Your Investment Preference</h1>
+      <p class="subtitle">Tell Neu about your goals and risk appetite so our agents can analyse the market for you.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # === FORM or RESULTS ===
 if not st.session_state.show_results:
@@ -81,45 +94,84 @@ if not st.session_state.show_results:
 
         trader = st.radio(
             "What describes you best?",
-            ["New buyer", "Exiting buyer"]
+            ["New buyer", "Exiting buyer"],
+            help="Is this your first time buying this asset, or are you looking to exit a position?"
         )
 
         duration = st.selectbox(
             "⏳ Investment Duration",
             ["Short-term (1-3 months)", "Medium-term (3-6 months)", "Long-term (6+ months)"],
-            help="How long do you plan to hold this asset?"
+            # help="How long do you plan to hold this asset?"
         )
 
 
         submit = st.form_submit_button("Run Analytics", use_container_width=True)
         if submit:
+            st.session_state.user_inputs = {
+                "coin": coin_label,
+                "trader": trader,
+                "horizon": duration,
+            }
             run_analysis(coin_label, trader, duration)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     data = st.session_state.analysis_data
     recommendation = data["final_decision"]
-    # recommendation = data["final_decision"]["holder"]
-    # buyer = data["final_decision"]["buyer"]
-    # conf = data["final_decision"]["confidence"]
+    duration = data["horizon"]
+    # data["horizon"] = duration
+    confidence = data["confidence"]
+    reason = data["final_reason"]
 
-    st.markdown("<div class='results-container'>", unsafe_allow_html=True)
-    # Final Decision Card
-    st.markdown(f"""
-    <div class='decision-card {recommendation}'>
-        <h4>📈 Neu's Recommendation: <span>{recommendation}</span></h4>
+    rec_txt = escape(recommendation)
+    dur_txt = escape(duration)
+    conf_txt = escape(str(confidence))
+    reason_txt = escape(reason)
+
+    # st.markdown("<div class='results-container'>", unsafe_allow_html=True)
+    # # Final Decision Card
+    # st.markdown(f"""
+    # <div class='decision-card {recommendation}'>
+    #     <h4>📈 Neu's Recommendation: <span>{recommendation}</span></h4>
+    # </div>
+    # """, unsafe_allow_html=True)
+
+    cards_html = f"""
+    <div class="decisions">
+      <div class="decision-card">
+        <h5>Final Recommendation</h5>
+        <p class="result-text text-color">{rec_txt}</p>
+      </div>
+    
+      <div class="decision-card">
+        <h5>Timeframe</h5>
+        <p class="result-text">{dur_txt}</p>
+      </div>
+    
+      <div class="decision-card">
+        <h5>Confidence score</h5>
+        <p class="result-text">{conf_txt}</p>
+      </div>
+    
+      <div class="decision-card">
+        <h5>Reason</h5>
+        <p class="result-text">{reason_txt}</p>
+      </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    
+    st.markdown(cards_html, unsafe_allow_html=True)
 
     # Research Summary
-    st.markdown(f"<div class='summary-card'>{data['research_summary']}</div>", unsafe_allow_html=True)
+    # st.markdown(f"<div class='summary-card'>{data['research_summary']}</div>", unsafe_allow_html=True)
 
     # Risk Notes
-    st.markdown(f"<div class='risk-card'>{data['risk_notes']}</div>", unsafe_allow_html=True)
+    # st.markdown(f"<div class='risk-card'>{data['risk_notes']}</div>", unsafe_allow_html=True)
 
     # Tab Bar for Reports
     st.markdown(f"<div class='reports-section'>", unsafe_allow_html=True)
-    tab_labels = ["News", "Fundamentals", "Technical", "Sentiment"]
+    tab_labels = ["News", "Fundamentals", "Technical", "Sentiment", "Overall Summary"]
     tabs = st.tabs(tab_labels)
 
     with tabs[0]:
@@ -133,11 +185,16 @@ else:
 
     with tabs[3]:
         st.markdown(data["reports"]["sentiment"]["raw"])
+
+    with tabs[4]:
+        st.markdown(data["reports"]["overall"]["raw"])
     st.markdown("</div>", unsafe_allow_html=True)
 
     # Try Another Coin Button
     st.button("🔄 Try another coin", use_container_width=True, on_click=reset_form)
     st.markdown("</div>", unsafe_allow_html=True)
+
+
 
 # === Footer ===
 with st.container(key="footer"):

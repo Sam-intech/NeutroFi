@@ -45,28 +45,48 @@
 }
 
 
+/* === Header ==== */
+.title {
+  padding-bottom: 0rem !important;
+}
+
+
+/* === form styling === */
+.st-emotion-cache-an20vi {
+  border-color: #1A5396;
+}
+
+.st-emotion-cache-1v8kk03 p {
+  font-size: 1.1rem !important;
+  font-weight: 500 !important;
+}
+
+.st-emotion-cache-wfksaw {
+  gap: 2rem;
+}
+
+
 
 /* ===== BUTTONS ===== */
-.stButton > button {
-  background-color: var(--pri);
+.st-emotion-cache-efmxec {
+  background-color: #1A5396;
   color: white;
+  border-color: #1A5396;
+  /* background-color: var(--pri); */
   font-weight: 600;
-  border-radius: 12px;
+  /* border-radius: 12px; */
   padding: .6rem 1.25rem;
   border: none;
-  transition: background-color 0.2s ease, transform 0.15s ease;
-}
-.stButton > button:hover {
-  background-color: var(--pri-600);
-  transform: translateY(-2px);
+  /* transition: background-color 0.2s ease, transform 0.15s ease; */
+  margin-top: 2rem;
 }
 
-/* Match background feel from landing page */
-[data-testid="stAppViewContainer"] {
-  background: radial-gradient(1200px 600px at 20% -10%, rgba(139,92,246,0.25), transparent 60%),
-              radial-gradient(900px 500px at 90% -20%, rgba(16,185,129,0.18), transparent 60%),
-              #0b0f1a;
-  color: #e5e7eb;
+.st-emotion-cache-efmxec:hover {
+  background-color: white;
+  color: #1A5396;
+  border-color: #1A5396;
+  box-shadow: none !important;
+  border: 1px solid #1A5396;
 }
 
 .reports-section {
@@ -74,4 +94,94 @@
   padding: 0.5rem;
   /* background-color: rgba(255, 255, 255, 0.05); */
   /* border-radius: 12px; */
+}
+
+
+
+
+/* === Footer === */
+/* Footer */
+.footer {
+  margin-top: 3rem;
+  color: #9ca3af;
+  font-size: .9rem;
+}
+
+.footer hr {
+  /* border-color:rgba(255,255,255,.08); */
+  border-color: #E6E6E6;
+  border-width:0 0 1px;
+  margin:2rem 0;
+}
+
+.disclaimer {
+  font-size: .85rem;
+  color: #9ca3af;
+  text-align: center;
+  width: 100%;
+}
+
+
+
+
+
+
+
+
+
+/* container: 2 cols, 2 rows */
+.decisions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;                 /* space between cards */
+  align-items: stretch;
+  justify-content: center;   /* center the grid in the row */
+  margin: 0 auto 1rem;
+  /* max-width: 900px;          tweak to your liking */
+}
+
+/* each card takes half width (minus gap) */
+.decision-card{
+  flex: 1 1 calc(50% - 16px);
+  max-width: calc(50% - 16px);
+  background: var(--secondary-background-color, rgba(17,24,39,.06));
+  border: 1px solid color-mix(in srgb, var(--text-color, #eee) 12%, transparent);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  text-align: center;
+  background: #F2F2F2;
+  /* background: var(--nf-card); */
+  border:1px solid #E6E6E6;
+  border-radius: 16px;
+  padding:1.25rem;
+  text-align:center;
+  box-sizing: border-box;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+
+/* content polish */
+/* .decision-card h4, */
+.decision-card h5{
+  font-size: 1.3rem;
+  margin: 0 0 6px 0;
+}
+
+/* .result-text{
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.35;
+} */
+
+/* color helper (optional) */
+/* .text-color{
+  color: var(--primary-color, #1A5396);
+} */
+
+/* responsive: stack to 1 column on small screens */
+@media (max-width: 640px){
+  .decision-card{
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
 }

@@ -43,11 +43,18 @@ def run_trading_pipeline(
         "final_decision": final_state.get("final_recommendation", ""),
         "research_summary": final_state.get("research_summary", ""),
         "risk_notes": final_state.get("risk_notes", ""),
+
+        "trader_position": final_state.get("user_type", trader_position),
+        "horizon": final_state.get("horizon", duration),
+        "confidence":  final_state.get("confidence"),
+        "final_reason": final_state.get("final_reason"),
+
         "reports": {
             "news": {"raw": final_state.get("news_report", "")},
             "fundamentals": {"raw": final_state.get("fundamentals_report", "")},
             "technical": {"raw": final_state.get("technical_report", "")},
             "sentiment": {"raw": final_state.get("sentiment_report", "")},
+            "overall": final_state.get("research_summary", ""),
         },
     }
 
