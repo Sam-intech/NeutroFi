@@ -16,6 +16,10 @@
   text-transform: capitalize !important;
 }
 
+.st-emotion-cache-1w723zb {
+  padding-top: 3rem !important;
+}
+
 
 /* Fade in + slide up */
 @keyframes fadeInUp {
@@ -49,6 +53,14 @@
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+.st-emotion-cache-1nckjrl h4 {
+  /* font-size: 1.2rem; */
+  font-weight: 700 !important;
+  /* color: #1A5396; */
+  margin-bottom: 1rem;
+  text-align: center !important;
 }
 
 
@@ -129,6 +141,14 @@
 }
 
 
+.st-emotion-cache-1nckjrl h1 {
+  /* font-size: 1.2rem; */
+  font-weight: 600;
+  /* color: #1A5396; */
+  margin-bottom: 1.5rem;
+}
+
+
 
 
 
@@ -144,6 +164,7 @@
   align-items: stretch;
   justify-content: center;   /* center the grid in the row */
   margin: 0 auto 1rem;
+  margin-bottom: 5rem !important;
   /* max-width: 900px;          tweak to your liking */
 }
 

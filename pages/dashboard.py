@@ -133,10 +133,10 @@ if not st.session_state.show_results:
         coin_label = st.selectbox(
             "🪙 What cryptocurrency are interested in today",
             [
-                "Bitcoin (BTC)", "Ethereum (ETH)", "Ripple (XRP)", "Tether (USDT)", "Binance coin (BNB)", "Solana (SOL)",
-                "USD Coin (USDC)", "Dogecoin (DOGE)", "TRON (TRX)", "Cardano (ADA)", "Hyperliquid (HYPE)", "Stellar (XLM)", 
-                "Sui (SUI)", "Chainlink (LINK)", "Hedera (HBAR)", "Bitcoin cash (BCH)", "Avalanche (AVAX)", "Wrapped Bitcoin (WBTC)", 
-                "Toncoin (TON)", "Polkadot (DOT)",
+                "Bitcoin", "Ethereum", "Ripple", "Tether", "Binance coin", "Solana",
+                "USD Coin", "Dogecoin", "TRON", "Cardano", "Hyperliquid (HYPE)", "Stellar", 
+                "Sui", "Chainlink", "Hedera", "Bitcoin cash", "Avalanche", "Wrapped Bitcoin", 
+                "Toncoin", "Polkadot",
             ]
         )
 
@@ -173,6 +173,11 @@ else:
     # === Display Results ===
     data = st.session_state.analysis_data
     inputs = st.session_state.user_inputs
+
+    # === Results Header ===
+    coin_name = st.session_state.user_inputs.get("coin", "").strip()
+    if coin_name:
+        st.markdown(f"#### Neu's Verdict for {coin_name}")
 
     final_decision = _coerce_text(data.get("final_decision", "No decision made"))
     # final_decision = data.get("final_decision", "No decision made")
@@ -242,6 +247,15 @@ else:
     #     <h4>📈 Neu's Recommendation: <span>{recommendation}</span></h4>
     # </div>
     # """, unsafe_allow_html=True)
+    
+    # st.markdown(
+    #     """
+    #     <div class="verdict">
+    #       <h5>Verdict</h5>
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True,
+    # )
 
     cards_html = f"""
     <div class="decisions">
@@ -270,48 +284,61 @@ else:
     st.markdown(cards_html, unsafe_allow_html=True)
 
 
+    SECTION_NAMES = r"(Fundamentals?|News|Sentiment|Technicals?)"
+    def _canon(name: str) -> str:
+        n = name.strip().lower()
+        if n.startswith("fundamental"):
+            return "Fundamentals"
+        if n.startswith("technical"):
+            return "Technicals"
+        if n.startswith("news"):
+            return "News"
+        return "Sentiment"
+
     def parse_overall(raw: str):
-        """Parse your backend's Overall text into sections we can render cleanly."""
         out = {"summaries": {}, "recs": {}, "advice": {}}
-        text = re.sub(r"\s+", " ", (raw or "").strip())
-    
-        # --- Market Summary ---
+        text = (raw or "").strip()
+
+        # --- Market Summary body ---
         ms = re.search(
-            r"Market Summary:(.*?)(Short[-\s]*Term Recommendation:|Existing Holder Advice:|New Investor Advice:|$)",
-            text, re.I
+            r"Market Summary:\s*(.*?)(?:\n{2,}|(?:Short|Medium|Long)[^\n]*Recommendation:|Existing Holder Advice:|New Investor Advice:|$)",
+            text, re.IGNORECASE | re.DOTALL
         )
         if ms:
             body = ms.group(1).strip()
-            for chunk in re.split(r"•\s*", body):
-                if not chunk.strip():
-                    continue
-                m = re.match(r"(Fundamentals?|News|Sentiment|Technicals?):\s*(.*)", chunk, re.I)
-                if m:
-                    out["summaries"][m.group(1).strip().capitalize()] = m.group(2).strip()
-    
-        # --- Timeframe recommendations (strip confidence) ---
-        for pat, key in [
-            (r"Short[-\s]*Term Recommendation:\s*([A-Za-z ]+)", "short"),
-            (r"Medium[-\s]*Term Recommendation:\s*([A-Za-z ]+)", "medium"),
-            (r"Long[-\s]*Term Recommendation:\s*([A-Za-z ]+)", "long"),
-        ]:
-            m = re.search(pat, text, re.I)
-            if m:
-                out["recs"][key] = m.group(1).strip()  # no confidence captured
-    
+            body = re.sub(r"[•*\-]\s*", "", body)  # drop bullets
+
+            for m in re.finditer(
+                rf"{SECTION_NAMES}:\s*(.*?)(?=(?:\s*{SECTION_NAMES}:)|(?:\s*(?:Short|Medium|Long)[^\n]*Recommendation:)|\s*Existing Holder Advice:|\s*New Investor Advice:|$)",
+                body, re.IGNORECASE | re.DOTALL
+            ):
+                name = _canon(m.group(1))
+                content = re.sub(r"\s+", " ", m.group(2)).strip()
+                if content:
+                    out["summaries"][name] = content
+
         # --- Advice blocks ---
-        m = re.search(r"Existing Holder Advice:\s*([A-Za-z ]+)\s*—\s*Reason:\s*(.*?)(?:New Investor Advice:|$)", text, re.I)
+        m = re.search(r"Existing Holder Advice:\s*([A-Za-z ]+)\s*[—\-–]\s*Reason:\s*(.*?)(?=New Investor Advice:|$)",
+                      text, re.IGNORECASE | re.DOTALL)
         if m:
-            out["advice"]["existing"] = {"action": m.group(1).strip(), "reason": m.group(2).strip()}
-        m = re.search(r"New Investor Advice:\s*([A-Za-z ]+)\s*—\s*Reason:\s*(.*)$", text, re.I)
+            out["advice"]["existing"] = {
+                "action": m.group(1).strip(),
+                "reason": re.sub(r"\s+", " ", m.group(2)).strip()
+            }
+
+        m = re.search(r"New Investor Advice:\s*([A-Za-z ]+)\s*[—\-–]\s*Reason:\s*(.*)$",
+                      text, re.IGNORECASE | re.DOTALL)
         if m:
-            out["advice"]["new"] = {"action": m.group(1).strip(), "reason": m.group(2).strip()}
+            out["advice"]["new"] = {
+                "action": m.group(1).strip(),
+                "reason": re.sub(r"\s+", " ", m.group(2)).strip()
+            }
+
         return out
 
 
-
     # Tab Bar for Reports
-    st.markdown(f"<div class='reports-section'>", unsafe_allow_html=True)
+    # st.markdown(f"<div class='reports-section'>", unsafe_allow_html=True)
     tab_labels = ["News", "Fundamentals", "Technical", "Sentiment", "Overall Summary"]
     tabs = st.tabs(tab_labels)
 
@@ -327,9 +354,22 @@ else:
     with tabs[3]:
         st.markdown(data["reports"]["sentiment"]["raw"])
 
-    with tabs[4]:
-        st.markdown(data["reports"]["overall"]["raw"])
+    # with tabs[4]:
+    #     st.markdown(data["reports"]["overall"]["raw"])
     # st.markdown("</div>", unsafe_allow_html=True)
+    with tabs[4]:
+        overall_raw = data["reports"]["overall"]["raw"]
+        parsed = parse_overall(overall_raw)
+
+        # Optional: wrap with a class to target CSS tweaks
+        st.markdown("<div class='report-overall'>", unsafe_allow_html=True)
+
+        # Market Summary (major header; one paragraph per section)
+        st.markdown("#### Market Summary")
+        for section in ["Fundamentals", "News", "Sentiment", "Technicals"]:
+            if section in parsed["summaries"]:
+                st.markdown(f"**{section}:** {parsed['summaries'][section]}")
+
 
     # Try Another Coin Button
     st.button("🔄 Try another coin", use_container_width=True, on_click=reset_form)
