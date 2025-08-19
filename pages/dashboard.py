@@ -99,20 +99,8 @@ def run_analysis(coin_label: str, trader_label: str, horizon_label: str):
         st.session_state.animating = False
         st.rerun()
 
+
 # === PAGE TITLE ===
-# st.markdown("<h1 class='title'>Your Investment Preferences</h1>", unsafe_allow_html=True)
-# st.markdown("<p class='subtitle'>Tell NeutroFi about your goals and risk appetite so our agents can analyze the market for you.</p>", unsafe_allow_html=True)
-
-# st.markdown(
-#     """
-#     <div class="hero">
-#       <h1 class="title">Your Investment Preference</h1>
-#       <p class="subtitle">Tell Neu about your goals and risk appetite so our agents can analyse the market for you.</p>
-#     </div>
-#     """,
-#     unsafe_allow_html=True,
-# )
-
 # === FORM or RESULTS ===
 if not st.session_state.show_results:
     fade_class = st.session_state.fade_class if "fade_class" in st.session_state else "form-container"
@@ -155,11 +143,6 @@ if not st.session_state.show_results:
 
         submit = st.form_submit_button("Run Analytics", use_container_width=True)
         if submit:
-            # st.session_state.user_inputs = {
-            #     "coin": coin_label,
-            #     "trader": trader,
-            #     "horizon": duration,
-            # }
             run_analysis(coin_label, trader, duration)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -184,11 +167,6 @@ else:
     horizon_token = data.get("horizon")
     confidence = data.get("confidence")
     final_reason = data.get("final_reason", "No reason provided")
-    # recommendation = data["final_decision"]
-    # duration = data["horizon"]
-    # # data["horizon"] = duration
-    # confidence = data["confidence"]
-    # reason = data["final_reason"]
 
 
     TOKEN_TO_LABEL = {
@@ -240,22 +218,6 @@ else:
     conf_txt = "N/A" if confidence is None else escape(str(confidence))
     reason_txt = escape(str(final_reason))
 
-    # st.markdown("<div class='results-container'>", unsafe_allow_html=True)
-    # # Final Decision Card
-    # st.markdown(f"""
-    # <div class='decision-card {recommendation}'>
-    #     <h4>📈 Neu's Recommendation: <span>{recommendation}</span></h4>
-    # </div>
-    # """, unsafe_allow_html=True)
-    
-    # st.markdown(
-    #     """
-    #     <div class="verdict">
-    #       <h5>Verdict</h5>
-    #     </div>
-    #     """,
-    #     unsafe_allow_html=True,
-    # )
 
     cards_html = f"""
     <div class="decisions">
@@ -354,9 +316,6 @@ else:
     with tabs[3]:
         st.markdown(data["reports"]["sentiment"]["raw"])
 
-    # with tabs[4]:
-    #     st.markdown(data["reports"]["overall"]["raw"])
-    # st.markdown("</div>", unsafe_allow_html=True)
     with tabs[4]:
         overall_raw = data["reports"]["overall"]["raw"]
         parsed = parse_overall(overall_raw)
