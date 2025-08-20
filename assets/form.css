@@ -83,12 +83,9 @@
   background-color: #1A5396;
   color: white;
   border-color: #1A5396;
-  /* background-color: var(--pri); */
   font-weight: 600;
-  /* border-radius: 12px; */
   padding: .6rem 1.25rem;
   border: none;
-  /* transition: background-color 0.2s ease, transform 0.15s ease; */
   margin-top: 2rem;
 }
 
@@ -103,8 +100,6 @@
 .reports-section {
   margin-top: 1.5rem;
   padding: 0.5rem;
-  /* background-color: rgba(255, 255, 255, 0.05); */
-  /* border-radius: 12px; */
 }
 
 
@@ -119,7 +114,6 @@
 }
 
 .footer hr {
-  /* border-color:rgba(255,255,255,.08); */
   border-color: #E6E6E6;
   border-width:0 0 1px;
   margin:2rem 0;
@@ -134,9 +128,7 @@
 
 
 .st-emotion-cache-1nckjrl h1 {
-  /* font-size: 1.2rem; */
   font-weight: 600;
-  /* color: #1A5396; */
   margin-bottom: 1.5rem;
 }
 
@@ -157,7 +149,6 @@
   justify-content: center;   /* center the grid in the row */
   margin: 0 auto 1rem;
   margin-bottom: 5rem !important;
-  /* max-width: 900px;          tweak to your liking */
 }
 
 /* each card takes half width (minus gap) */
@@ -165,15 +156,10 @@
   flex: 1 1 calc(50% - 16px);
   max-width: calc(50% - 16px);
   background: var(--secondary-background-color, rgba(17,24,39,.06));
-  /* border: 1px solid color-mix(in srgb, var(--text-color, #eee) 12%, transparent); */
-  /* border-radius: 14px; */
-  /* padding: 18px 20px; */
   justify-content: center;
   align-items: center;
   box-sizing: border-box;
-  /* text-align: center; */
   background: #F2F2F2;
-  /* background: var(--nf-card); */
   border:1px solid #E6E6E6;
   border-radius: 16px;
   padding:1.25rem;
@@ -183,10 +169,8 @@
 }
 
 /* content polish */
-/* .decision-card h4, */
 .decision-card h5{
   font-size: 1rem;
-  /* margin: 0 0 6px 0; */
   font-weight: 300;
   color: #9ca3af;
 }

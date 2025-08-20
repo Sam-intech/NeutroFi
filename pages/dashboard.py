@@ -104,7 +104,6 @@ def run_analysis(coin_label: str, trader_label: str, horizon_label: str):
 # === FORM or RESULTS ===
 if not st.session_state.show_results:
     fade_class = st.session_state.fade_class if "fade_class" in st.session_state else "form-container"
-    # st.markdown(f"<div class='{st.session_state.fade_class}'>", unsafe_allow_html=True)
 
     st.markdown(
         """
@@ -137,7 +136,6 @@ if not st.session_state.show_results:
         duration = st.selectbox(
             "⏳ Investment Duration",
             ["Short term (1-3 months)", "Medium term (3-6 months)", "Long term (6+ months)"],
-            # help="How long do you plan to hold this asset?"
         )
 
 
@@ -163,7 +161,6 @@ else:
         st.markdown(f"#### Neu's Verdict for {coin_name}")
 
     final_decision = _coerce_text(data.get("final_decision", "No decision made"))
-    # final_decision = data.get("final_decision", "No decision made")
     horizon_token = data.get("horizon")
     confidence = data.get("confidence")
     final_reason = data.get("final_reason", "No reason provided")
@@ -176,7 +173,6 @@ else:
     }
     horizon_token = data.get("horizon")
     horizon_label = inputs.get("horizon_label")
-    # horizon_display = inputs.get("horizon_label")
     horizon_display = horizon_label or TOKEN_TO_LABEL.get(horizon_token, "N/A")
 
     # Confidence (try to parse as float)
@@ -300,7 +296,6 @@ else:
 
 
     # Tab Bar for Reports
-    # st.markdown(f"<div class='reports-section'>", unsafe_allow_html=True)
     tab_labels = ["News", "Fundamentals", "Technical", "Sentiment", "Overall Summary"]
     tabs = st.tabs(tab_labels)
 
