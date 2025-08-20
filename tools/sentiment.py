@@ -42,6 +42,7 @@ class RedditSentimentScraper:
             return []
         return results
 
+    # function for post cleaning and preprocsessing
     def clean_posts(self, texts):
         cleaned = []
         for text in texts:
